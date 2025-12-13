@@ -1,4 +1,5 @@
 import os
+import argparse
 from dotenv import load_dotenv
 from google import genai
 
@@ -12,8 +13,11 @@ def main():
     
     client = genai.Client(api_key=api_key)
     
-    # Example usage of the client
-    content = "Why is Boot.dev such a great place to learn backend development? Use one paragraph maximum."
+    # Get a prompt from the user
+    parser = argparse.ArgumentParser(description="Cyberis AI Assistant")
+    parser.add_argument('user_prompt', type=str, help='How can I assist you today?')
+    args = parser.parse_args()
+    content = args.user_prompt
     print(f'User prompt: {content}')
     response = client.models.generate_content(model="gemini-2.5-flash", contents=content)
     
