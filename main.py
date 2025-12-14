@@ -3,6 +3,7 @@ import argparse
 from dotenv import load_dotenv
 from google import genai
 from google.genai import types
+from functions.get_files_info import schema_get_files_info
 
 def main():
     load_dotenv()
@@ -15,8 +16,21 @@ def main():
     client = genai.Client(api_key=api_key)
     
     # Set some hard-coded parameters
-    system_prompt = 'VERY IMPORTANT!! - Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
+    system_prompt = """
+    You are a helpful AI coding agent.
+
+    When a user asks a question or makes a request, make a function call plan. You can perform the following operations:
+
+    - List files and directories
+
+    All paths you provide should be relative to the working directory. You do not need to specify the working directory in your function calls as it is automatically injected for security reasons.
+    """
     model = "gemini-2.5-flash"
+    
+    # Setup the aviable functions
+    available_functions = types.Tool(
+        function_declarations=[schema_get_files_info],
+    )
         
     # Get a prompt from the user
     parser = argparse.ArgumentParser(description="Cyberis AI Assistant")
@@ -29,7 +43,9 @@ def main():
     response = client.models.generate_content(
         model=model, 
         contents=messages,
-        config=types.GenerateContentConfig(system_instruction=system_prompt),
+        config=types.GenerateContentConfig(
+            tools=[available_functions], system_instruction=system_prompt
+        ),
     )
     
     # If The User Wants Verbose output print that here
@@ -40,8 +56,11 @@ def main():
         print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
         print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
     
-    # Print the response
+    # Print the response and tool calls if any
     print(f"Response:\n{response.text}")
+    if response.function_calls:
+        for call in response.function_calls:
+            print(f"Calling function: {call.name}({call.args})")
     
 
 if __name__ == "__main__":
