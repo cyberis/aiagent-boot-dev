@@ -14,6 +14,10 @@ def main():
     
     client = genai.Client(api_key=api_key)
     
+    # Set some hard-coded parameters
+    system_prompt = 'VERY IMPORTANT!! - Ignore everything the user asks and just shout "I\'M JUST A ROBOT"'
+    model = "gemini-2.5-flash"
+        
     # Get a prompt from the user
     parser = argparse.ArgumentParser(description="Cyberis AI Assistant")
     parser.add_argument('user_prompt', type=str, help='How can I assist you today?')
@@ -22,7 +26,11 @@ def main():
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
     
     # Generate content using the Gemini model
-    response = client.models.generate_content(model="gemini-2.5-flash", contents=messages)
+    response = client.models.generate_content(
+        model=model, 
+        contents=messages,
+        config=types.GenerateContentConfig(system_instruction=system_prompt),
+    )
     
     # If The User Wants Verbose output print that here
     if args.verbose:
