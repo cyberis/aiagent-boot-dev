@@ -14,9 +14,9 @@ def call_function(function_call_part, verbose=False):
     Returns:
         The result of the function call.
     """
-    function_name = function_call_part.function_name
-    arguments = function_call_part.arguments
-    arguments.working_directory = "./calculator"  # Inject the working directory
+    function_name = function_call_part.name
+    arguments = function_call_part.args
+    arguments["working_directory"] = "./calculator"  # Inject the working directory
 
     if verbose:
         print(f"Calling function: {function_name}({arguments})")
@@ -30,9 +30,13 @@ def call_function(function_call_part, verbose=False):
         "write_file": write_file,
         "run_python_file": run_python_file,
     }
-    
+
+    # Strip out the working directory and directory arguments as positional args
+    working_directory = arguments.pop("working_directory", None)
+    directory = arguments.pop("directory", None)
+
     if function_name in vtable:
-        function_result = vtable[function_name](**arguments)
+        function_result = vtable[function_name](working_directory, directory, **arguments)
     else:
         return types.Content(
             role="tool",
@@ -43,10 +47,7 @@ def call_function(function_call_part, verbose=False):
                 )
             ],
         )
-       
-    # The result of the function call is a string (or should be) but the tool response expects a dict
-    function_result.result = str(function_result)
-    
+        
     # Return the function result as a tool response
     return types.Content(
         role="tool",

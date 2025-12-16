@@ -71,7 +71,7 @@ def main():
             # Call the function and print the result
             function_response = call_function(call, verbose=args.verbose)
             try:
-                if function_response.parts[0].response["result"]:
+                if function_response.parts[0].function_response.response:
                     results.append(function_response.parts[0])
                 else:
                     raise RuntimeError("No result found in function response.")
