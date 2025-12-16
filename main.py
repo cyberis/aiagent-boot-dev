@@ -7,6 +7,7 @@ from functions.get_files_info import schema_get_files_info
 from functions.get_file_content import schema_get_file_content
 from functions.write_file import schema_write_file
 from functions.run_python_file import schema_run_python_file
+from functions.call_function import call_function
 
 def main():
     load_dotenv()
@@ -64,10 +65,24 @@ def main():
     
     # Print the response and tool calls if any
     print(f"Response:\n{response.text}")
+    results = []
     if response.function_calls:
         for call in response.function_calls:
+            # Call the function and print the result
+            function_response = call_function(call, verbose=args.verbose)
+            try:
+                if function_response.parts[0].response["result"]:
+                    results.append(function_response.parts[0])
+                else:
+                    raise RuntimeError("No result found in function response.")
+            except Exception as e:
+                raise RuntimeError(f"Error processing function response: {str(e)}")
             print(f"Calling function: {call.name}({call.args})")
-    
+            if args.verbose:
+                print(f"-> {function_response.parts[0].function_response.response}")
+                
+    if results:
+        pass  #TODO: Handle multiple function call results if needed
 
 if __name__ == "__main__":
     main()
