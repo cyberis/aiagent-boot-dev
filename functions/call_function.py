@@ -33,7 +33,7 @@ def call_function(function_call_part, verbose=False):
 
     # Strip out the working directory and directory arguments as positional args
     working_directory = arguments.pop("working_directory", None)
-    directory = arguments.pop("directory", None)
+    directory = arguments.pop("directory", ".")
 
     if function_name in vtable:
         function_result = vtable[function_name](working_directory, directory, **arguments)
