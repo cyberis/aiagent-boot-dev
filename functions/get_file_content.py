@@ -9,7 +9,7 @@ schema_get_file_content = types.FunctionDeclaration(
     parameters=types.Schema(
         type=types.Type.OBJECT,
         properties={
-            "directory": types.Schema(
+            "file_path": types.Schema(
                 type=types.Type.STRING,
                 description="The directory to get file content from, relative to the working directory. If not provided, the file is in the working directory itself.",
             ),
