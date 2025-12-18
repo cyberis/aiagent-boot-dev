@@ -8,6 +8,7 @@ from functions.get_file_content import schema_get_file_content
 from functions.write_file import schema_write_file
 from functions.run_python_file import schema_run_python_file
 from functions.call_function import call_function
+from functions.config import MAX_ITERATIONS
 
 def main():
     load_dotenv()
@@ -46,43 +47,71 @@ def main():
     args = parser.parse_args()
     messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
     
-    # Generate content using the Gemini model
-    response = client.models.generate_content(
-        model=model, 
-        contents=messages,
-        config=types.GenerateContentConfig(
-            tools=[available_functions], system_instruction=system_prompt
-        ),
-    )
+    print(f'Initial messages: {messages}')
     
-    # If The User Wants Verbose output print that here
-    if args.verbose:
-        if not response.usage_metadata:
-            raise RuntimeError("No usage metadata found in the response.")
-        print(f'User prompt: {args.user_prompt}')
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+    # Loop to handle function calls and responses
+    job_complete = False
     
-    # Print the response and tool calls if any
-    print(f"Response:\n{response.text}")
-    results = []
-    if response.function_calls:
-        for call in response.function_calls:
-            # Call the function and print the result
-            function_response = call_function(call, verbose=args.verbose)
-            try:
-                if function_response.parts[0].function_response.response:
-                    results.append(function_response.parts[0])
-                else:
-                    raise RuntimeError("No result found in function response.")
-            except Exception as e:
-                raise RuntimeError(f"Error processing function response: {str(e)}")
-            print(f"Calling function: {call.name}({call.args})")
-            if args.verbose:
-                print(f"-> {function_response.parts[0].function_response.response}")
-                
-    if results:
-        pass  #TODO: Handle multiple function call results if needed
+    for iteration in range(MAX_ITERATIONS):
+        # Generate content using the Gemini model
+        response = client.models.generate_content(
+            model=model, 
+            contents=messages,
+            config=types.GenerateContentConfig(
+                tools=[available_functions], system_instruction=system_prompt
+            ),
+        )
+        
+        # If The User Wants Verbose output print that here
+        if args.verbose:
+            if not response.usage_metadata:
+                raise RuntimeError("No usage metadata found in the response.")
+            print(f'User prompt: {args.user_prompt}')
+            print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+            print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        
+        # Print the response and tool calls if any
+        print(f'Response.text: {response.text}')
+        print(f'Response: {response}')
+        
+        if response.candidates:
+            for candidate in response.candidates:
+                print(f"Response candidate:\n{candidate.content}")
+                messages.append(candidate.content)
+        
+        # Check to see if we are done
+        if not response.function_calls and response.text:
+            job_complete = True
+            print(f'Finshed successfully in {iteration + 1} iterations.')
+            print(f'Final response: {response.text}\n\nDone.')
+            break
+        
+        # We have more to do so handle the function calls
+        results = []
+        if response.function_calls:
+            for call in response.function_calls:
+                # Call the function and print the result
+                print(f'Function call: {call}')
+                function_response = call_function(call, verbose=args.verbose)
+                try:
+                    if function_response.parts[0].function_response.response:
+                        results.append(function_response.parts[0])
+                    else:
+                        raise RuntimeError("No result found in function response.")
+                except Exception as e:
+                    raise RuntimeError(f"Error processing function response: {str(e)}")
+                print(f"Calling function: {call.name}({call.args})")
+                if args.verbose:
+                    print(f"-> {function_response.parts[0].function_response.response}")
+                    
+        if results:
+            messages.append(types.Content(role="user", parts=results))
+            # print(f'results: {results}')
+    
+    print("Job complete." if job_complete else "Job not complete.")    
+    
+    # Final messages log -- I will probably make this more human readable later
+    # print(f'Final messages: {messages}')
 
 if __name__ == "__main__":
     main()
